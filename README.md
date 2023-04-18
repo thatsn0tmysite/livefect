@@ -58,6 +58,7 @@ You will likely need to be `root` to run this.
 Livefect = Infect live, running processes
 Usage: ./livefect [opts]
         -h --help:              show this help message
+        -V --process-vm:        use process_vm_writev instead of /proc/[pid]/mem
         -p --pid PID:           run against specified pid (default: NULL)
         -f --file FILE:         file containing data to write/payload (default: NULL)
         -a --addr ADDR:         (raw mode) address to write data/payload to
