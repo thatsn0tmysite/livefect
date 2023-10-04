@@ -17,6 +17,7 @@ Some scenarios where this might be helpful:
 
 ## TODOs and possible new features
    - Rewrite code to be less messy
+   - When segment to rwx mem is found, write payload at given address (-a), then pad the rest of the mapped area with `jmp address`, to maximize a chanche of execution
    - Find PLT/GOT entries of in-memory/loaded modules, overwrite address (this should be possible on RELRO binaries if the library is loaded at runtime) 
    - See if feasable/useful allow reading ROP gadget addresses from file, file format could be something like that:
    ```
@@ -40,7 +41,7 @@ Some scenarios where this might be helpful:
    0x789    234         //then one can further inspect this addr, see if it's a function (--disams) and write here (-a 0x789)
    ```
    - Regex filters for function and export names
-   - iovecs splitting if payload is > page_size
+   - iovecs splitting if payload is > page_size (jump added at pagesize_bytes-jmpsize to jmp to next available area)
 
 ## Compile
 To compile `livefect`, capstone is needed. Just run:
