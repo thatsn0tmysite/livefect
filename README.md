@@ -16,7 +16,8 @@ Some scenarios where this might be helpful:
 
 
 ## TODOs and possible new features
-
+   - Rewrite code to be less messy
+   - Find PLT/GOT entries of in-memory/loaded modules, overwrite address (this should be possible on RELRO binaries if the library is loaded at runtime) 
    - See if feasable/useful allow reading ROP gadget addresses from file, file format could be something like that:
    ```
    0x123456 // write first gadget here
