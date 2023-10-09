@@ -2,18 +2,19 @@
 default: livefect
 
 livefect:
-	gcc livefect.c /usr/lib/libZydis.so -Wall -o livefect
+	gcc *.c /usr/lib/libZydis.so -Wall -o livefect
 	strip livefect
 
 static:
-	gcc livefect.c /usr/lib/libZydis.so -static -Wall -o livefect
+	gcc *.c /usr/lib/libZydis.so -static -Wall -o livefect
 	strip livefect
 
 victim:
-	gcc -shared external_so.c -o victim.so 
-	gcc victim.c -o victim
+	cd examples/victim && make
+	cd ../../
 
 clean:
 	rm -f *.o *.so
 	rm -f livefect
-	rm -f victim
+	rm -f examples/victim/victim
+	rm -f examples/victim/*.o  examples/victim/*.so
