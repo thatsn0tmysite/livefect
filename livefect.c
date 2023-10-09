@@ -32,6 +32,7 @@
 #define DISASM_BYTES_OPT 1003
 
 /*Prototypes*/
+void set_defaults(args_t*);
 void print_usage();
 
 /**Globals*/
@@ -54,27 +55,7 @@ int main(int argc, char* argv[]) {
     program_name = argv[0];
 
     /*Set defaults*/
-    args.arg_pid = -1;                                      //pid 
-    args.arg_payload_path = NULL;                           //path to file containing payload
-    args.arg_list_exports = false;                          //only list exports
-    args.arg_list_maps = false;                             //only list maps
-    args.arg_show_usage = false;                            //show help
-    args.arg_force_disk = false;                            //force lookup of exported symbols from disk
-    args.arg_skip_root = false;                             //skip root checks
-    args.arg_inject_all = false;                            //inject payload into ALL matching memory areas 
-    args.arg_verbosity = 0;                                 //verbosity level
-    args.arg_disasm = 0;                                    //instructions to disassemble
-    args.arg_disasm_bytes = 64;                             //bytes to pass to disassemble
-    args.arg_raddr = NULL;                                  //remote address to write at in case of raw option
-    args.arg_perms[0] = 'r';                                //permissions to look for
-    args.arg_perms[1] = 'w';                                //permissions to look for
-    args.arg_perms[2] = 'x';                                //permissions to look for
-    args.arg_perms[3] = '*';                                //permissions to look for
-    args.arg_data_only = false;                             //only show data symbols
-    args.arg_process_vm = false;                            //attempt writes using process_vm_writev
-    args.arg_func_only = false;                             //only show func symbols
-    args.arg_symbol_filter = NULL;                          //symbol name to filter for
-    args.arg_library_filter = NULL;                         //library name to filter for
+    set_defaults(&args);
 
     int opt;
     const char    *short_opts = "hp:emAv:f:a:P:FsDSIV";
@@ -465,4 +446,28 @@ void print_usage() {
     //https://man7.org/linux/man-pages/man2/pidfd_open.2.html
     //https://lwn.net/Articles/830648/
     printf("\nMade while screaming in *PANIC* by @thatsn0mysite (https://thatsn0tmy.site)\n");
+}
+
+void set_defaults(args_t* args) {
+    args->arg_pid = -1;                                      //pid 
+    args->arg_payload_path = NULL;                           //path to file containing payload
+    args->arg_list_exports = false;                          //only list exports
+    args->arg_list_maps = false;                             //only list maps
+    args->arg_show_usage = false;                            //show help
+    args->arg_force_disk = false;                            //force lookup of exported symbols from disk
+    args->arg_skip_root = false;                             //skip root checks
+    args->arg_inject_all = false;                            //inject payload into ALL matching memory areas 
+    args->arg_verbosity = 0;                                 //verbosity level
+    args->arg_disasm = 0;                                    //instructions to disassemble
+    args->arg_disasm_bytes = 64;                             //bytes to pass to disassemble
+    args->arg_raddr = NULL;                                  //remote address to write at in case of raw option
+    args->arg_perms[0] = 'r';                                //permissions to look for
+    args->arg_perms[1] = 'w';                                //permissions to look for
+    args->arg_perms[2] = 'x';                                //permissions to look for
+    args->arg_perms[3] = '*';                                //permissions to look for
+    args->arg_data_only = false;                             //only show data symbols
+    args->arg_process_vm = false;                            //attempt writes using process_vm_writev
+    args->arg_func_only = false;                             //only show func symbols
+    args->arg_symbol_filter = NULL;                          //symbol name to filter for
+    args->arg_library_filter = NULL;                         //library name to filter for
 }
