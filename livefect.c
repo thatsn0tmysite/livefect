@@ -1,3 +1,4 @@
+#include <Zydis/Encoder.h>
 #include <stddef.h>
 #include <stdio.h>    
 #include <stdlib.h>   
@@ -9,12 +10,13 @@
 #include <errno.h>    //errno
 #include <getopt.h>   //getopt...
 #include <fts.h>      //fts_read...
-#include <sys/uio.h>  //iovec, process_vm_write/read...
+#include <sys/uio.h>  //iovec, process_vm_writev/readv...
 #include <sys/mman.h> //memfd, mmap, etc
 #include <fcntl.h>    //open, O_RDONLY, etc
 #include <elf.h>      //Elf64_*, Elf32_*
+#include <inttypes.h>
 
-#include <capstone/capstone.h>
+#include <Zydis/Zydis.h>
 
 #define _GNU_SOURCE 
 #define SYMBOL_OPT 1000
@@ -325,8 +327,6 @@ int main(int argc, char* argv[]) {
                 while(current) {
                     printf("\t[+] Match (%s) for pid %d @ %s:%p-%p\n", current->perms, current->pid, current->path, current->start, current->end);
                     if(arg_disasm > 0) { 
-                        csh handle = 0;
-                        cs_insn *insn = NULL;
                         size_t count = 0;
                         struct iovec ioremote[1];        //remote process io vector
                         struct iovec iolocal[1];         //local process io vector
@@ -345,27 +345,33 @@ int main(int argc, char* argv[]) {
                             current = current->next;
                             continue;
                         }
+
+                        ZydisDecoder decoder;
+                        ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+
+                        ZydisFormatter formatter;
+                        ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL); //TODO: support AT&T syntax via env variable,flag or something? 
                         
-                        if(nread != arg_disasm_bytes) {
-                            fprintf(stderr, "\t\t[W] Read bytes mismatch. Read %d bytes out of %d. (errno: %d)\n", nread, arg_disasm_bytes, errno);
+                        ZyanU64 runtime_address = (unsigned long)(current->start);
+                        ZyanUSize offset = 0;
+                        const ZyanUSize length = arg_disasm_bytes;
+                        ZydisDecodedInstruction instruction;
+                        ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+                        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code_buf + offset, length - offset, &instruction, operands)) && 
+                               count < arg_disasm) {
+                            // Print current instruction pointer.
+                            printf("\t\t%016" PRIX64 "  ", runtime_address);
+
+                            // Format & print the binary instruction structure to human-readable format
+                            char buffer[256];
+                            ZydisFormatterFormatInstruction(&formatter, &instruction, operands,
+                                instruction.operand_count_visible, buffer, sizeof(buffer), runtime_address, ZYAN_NULL);
+                            puts(buffer);
+
+                            offset += instruction.length;
+                            runtime_address += instruction.length;
+                            count++;
                         }
-
-                        //TODO: eventually add support multiple architectures.
-                        if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK)
-                            return -1;
-                        count = cs_disasm(handle, code_buf, arg_disasm_bytes, 0, arg_disasm, &insn);
-                        if (count > 0) {
-                            size_t j;
-                            for (j = 0; j < count; j++) {
-                                printf("\t\t0x%"PRIx64":\t%s\t\t%s\n", (unsigned long)(current->start+insn[j].address), insn[j].mnemonic, insn[j].op_str);
-                            }
-
-                            cs_free(insn, count);
-                        } else
-                            fprintf(stderr, "\t\t[E] Failed to disassemble given code!\n");
-                        
-                        free(code_buf);
-                        cs_close(&handle); 
                     }
                     
                     current = current->next;
@@ -417,8 +423,10 @@ int main(int argc, char* argv[]) {
 
         while(current_m) {
             segment_size = current_m->end - current_m->start;
+            
 
-            for(int i=0; i<(segment_size/payload_len);i++) {
+            //TODO prepare buffer of size segment-size, write payload, nopsled, jmp to payload
+            /*for(int i=0; i<(segment_size/payload_len);i++) {
                 //TODO: do math so we don't end up out of bound, also find clever way to align our code to whats underneath.
                 //if it is our first write, write payload , else write jmp current_m->start
                 size_t write_size;
@@ -441,9 +449,15 @@ int main(int argc, char* argv[]) {
                 } else {
                     //write jmp spray a.k.a. spray&pray (this will most likely crash the process)
                     //TODO: actually put values in here, we should also align ourselves somehow to first instruction?
+
+                    //NOPspray the whole segment
+                    write_size = (current_m->end-current_m->start)-payload_len;
+                    ZydisEncoderNopFill( ,write_size)
+
                     char* jmp_spray = "\xe9\x00\x00\x00\x00";
                     write_size = 5;
                     write_addr = (current_m->start+payload_len)+(write_size*i);
+                    
 
                     if(arg_verbosity>2)
                         printf("[.] Attempting jmp spray write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, write_size, current_m->pid, write_addr, write_addr+write_size);
@@ -452,7 +466,7 @@ int main(int argc, char* argv[]) {
                        fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", write_addr, errno);
                     }
                 }
-            }
+            }*/
             
             current_m = current_m->next;
         }
