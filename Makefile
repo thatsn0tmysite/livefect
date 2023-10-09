@@ -2,11 +2,11 @@
 default: livefect
 
 livefect:
-	gcc livefect.c -lcapstone -Wall -o livefect
+	gcc livefect.c /usr/lib/libZydis.so -Wall -o livefect
 	strip livefect
 
 static:
-	gcc livefect.c -static -lcapstone -Wall -o livefect
+	gcc livefect.c /usr/lib/libZydis.so -static -Wall -o livefect
 	strip livefect
 
 victim:

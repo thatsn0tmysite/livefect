@@ -16,10 +16,13 @@ Some scenarios where this might be helpful:
 
 
 ## TODOs and possible new features
-   - Rewrite code to be less messy
-   - When segment to rwx mem is found, write payload at given address (-a), then pad the rest of the mapped area with `jmp address`, to maximize a chanche of execution
-   - Find PLT/GOT entries of in-memory/loaded modules, overwrite address (this should be possible on RELRO binaries if the library is loaded at runtime) 
-   - See if feasable/useful allow reading ROP gadget addresses from file, file format could be something like that:
+   - [ ] Rewrite code to be less messy
+   - [ ] Rewrite ELF parsing in a more structured way
+   - [ ] When segment to rwx mem is found, write payload at given address (-a), then pad the rest of the mapped area with `jmp address`, to maximize a chanche of execution
+   - [ ] Regex filters for function and export names
+   - [ ] iovecs splitting if payload is > page_size (jump added at pagesize_bytes-jmpsize to jmp to next available area)
+   - [ ] Find PLT/GOT entries of in-memory/loaded modules, overwrite address (this should be possible on RELRO binaries if the library is loaded at runtime) 
+   - [ ] See if feasable/useful allow reading ROP gadget addresses from file, file format could be something like that:
    ```
    0x123456 // write first gadget here
    0xff1122 // this is the first gadget
@@ -28,7 +31,7 @@ Some scenarios where this might be helpful:
    ...
    ...
    ```
-   - It'd be very cool if it could also look for XREFs in the binary to identify possible injection points
+   - [ ] It'd be very cool if it could also look for XREFs in the binary to identify possible injection points
    ```
    Get ELF
    Disassemble and find XREFs
@@ -40,18 +43,15 @@ Some scenarios where this might be helpful:
    0x456    12
    0x789    234         //then one can further inspect this addr, see if it's a function (--disams) and write here (-a 0x789)
    ```
-   - Regex filters for function and export names
-   - iovecs splitting if payload is > page_size (jump added at pagesize_bytes-jmpsize to jmp to next available area)
+
 
 ## Compile
-To compile `livefect`, capstone is needed. Just run:
+To compile `livefect`, [zydis](https://github.com/zyantific/zydis) is needed. Just run:
 
 ```
 make # make livefect with all features and victim program
 
 make victim # make the victim program to play around
-
-make no-capstone # TODO: build livefect without --disasm and --disasm-bytes
 ```
 
 ## Usage
