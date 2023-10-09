@@ -271,3 +271,42 @@ off_t write_payload(pid_t pid, void* payload, size_t payload_len, void* dst, arg
 
     return 0;
 }
+
+void* get_cmdline(pid_t pid) {
+    if(pid == 0)
+        return NULL;
+    
+    int n = pid;
+    int n_digits = 0; 
+    while (n != 0) { 
+        n = n / 10; 
+        ++n_digits; 
+    } 
+
+    char* cmdline_path = (char*)malloc(strlen("/proc//comm")+n_digits);
+    if(cmdline_path == NULL)
+        return NULL;
+
+    sprintf(cmdline_path, "/proc/%d/comm", pid);
+                    
+    char* cmdline = (char*)malloc(257); //caller frees
+    if(cmdline == NULL) {
+        free(cmdline_path);
+        return NULL;
+    }
+    memset(cmdline, 0, 257);
+
+    int cmdline_fd = open(cmdline_path, O_RDONLY);
+    if(cmdline_fd<0) {
+        free(cmdline_path);
+        free(cmdline);
+        return NULL;
+    }
+    
+    read(cmdline_fd, cmdline, 257); //TODO: check read 
+    cmdline[strcspn(cmdline, "\n")] = 0;
+
+    close(cmdline_fd);
+    free(cmdline_path);
+    return (void*)cmdline;
+}

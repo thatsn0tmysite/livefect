@@ -50,5 +50,6 @@ typedef struct args_t {
 off_t write_payload(pid_t, void*, size_t, void*, args_t*);
 match_t* find_segments(pid_t, char*, match_t*, args_t *);  
 export_t* find_exports(match_t*, bool, export_t*, args_t *);
+void* get_cmdline(pid_t);
 
 #endif

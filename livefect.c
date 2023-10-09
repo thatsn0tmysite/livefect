@@ -233,7 +233,10 @@ int main(int argc, char* argv[]) {
                 match_t* current = matches;
                 printf("[=] Found segments:\n");
                 while(current) {
-                    printf("\t[+] Match (%s) for pid %d @ %s:%p-%p\n", current->perms, current->pid, current->path, current->start, current->end);
+                    char* cmdline = (char*)get_cmdline(current->pid);
+                    printf("\t[+] Match (%s) for pid %d (%s) @ <%s>:%p-%p\n", current->perms, current->pid, cmdline, current->path, current->start, current->end);
+                    free(cmdline);
+
                     if(args.arg_disasm > 0) { 
                         size_t count = 0;
                         struct iovec ioremote[1];        //remote process io vector
