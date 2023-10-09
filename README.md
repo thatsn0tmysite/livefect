@@ -16,9 +16,9 @@ Some scenarios where this might be helpful:
 
 
 ## TODOs and possible new features
-   - [ ] Rewrite code to be less messy
+   - [x] Rewrite code to be less messy
    - [ ] Rewrite ELF parsing in a more structured way
-   - [ ] When segment to rwx mem is found, write payload at given address (-a), then pad the rest of the mapped area with `jmp address`, to maximize a chanche of execution
+   - [x] When segment to rwx mem is found, write payload at given address (-a), then pad the rest of the mapped area with `jmp address`, to maximize a chanche of execution
    - [ ] Regex filters for function and export names
    - [ ] iovecs splitting if payload is > page_size (jump added at pagesize_bytes-jmpsize to jmp to next available area)
    - [ ] Find PLT/GOT entries of in-memory/loaded modules, overwrite address (this should be possible on RELRO binaries if the library is loaded at runtime) 
