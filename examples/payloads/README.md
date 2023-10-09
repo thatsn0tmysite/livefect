@@ -1,6 +1,6 @@
 # Shellcodes
 
-All test shellcodes are for `x86_64`, a quick recap of each one:
+All test payloads are for `x86_64`, a quick recap of each one:
 
 - shellcode_file: creates a file named `pwnd_AAA` under `/tmp/`
 - shellcode_sh: spawns a `/bin/sh`
