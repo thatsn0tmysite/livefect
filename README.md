@@ -14,6 +14,7 @@ Some scenarios where this might be helpful:
    - Overwrite of executable data is necessary (i.e. modify a variable's dlsym value to an arbitrary address)
    - Overwrite of data (i.e. values which control process flow)
 
+> If you end up using this software any feedback or contribution is appreciated. If you go through the code... I'm really, really sorry for the mess (lol?).
 
 ## TODOs and possible new features
    - [x] Rewrite code to be less messy
